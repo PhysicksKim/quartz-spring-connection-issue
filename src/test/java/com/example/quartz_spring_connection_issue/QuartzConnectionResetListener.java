@@ -6,6 +6,8 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.utils.ConnectionProvider;
 import org.quartz.utils.DBConnectionManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -15,21 +17,21 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 /**
- * 각 테스트 실행 전에 Quartz의 DBConnectionManager를 올바른 DataSource로 재설정 해줍니다.
- * Quartz 가 포함된 테스트에서 connection closed 에러가 발생하는 문제를 해결하기 위한 리스너입니다.
+ * Resets Quartz's DBConnectionManager with the correct DataSource before each test execution.
+ * This listener is designed to solve connection closed errors in tests that include Quartz.
  *
  * @see <a href="https://mickaelb.com/post/problem-with-quartz-and-spring-test-context-caching/">A problem with Quartz and Spring Test Context caching</a>
  */
 public class QuartzConnectionResetListener implements BeforeEachCallback {
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(QuartzConnectionResetListener.class);
+    private static final Logger log = LoggerFactory.getLogger(QuartzConnectionResetListener.class);
 
     @Override
     public void beforeEach(ExtensionContext context) throws Exception {
         log.info("=== QuartzConnectionResetListener: Resetting Quartz Connection Providers ===");
         
         try {
-            // Spring ApplicationContext에서 필요한 빈들을 가져옴
+            // Get required beans from Spring ApplicationContext
             var applicationContext = SpringExtension.getApplicationContext(context);
             if (applicationContext != null) {
                 try {
@@ -55,7 +57,7 @@ public class QuartzConnectionResetListener implements BeforeEachCallback {
         
         log.info("Setting Quartz connection providers for scheduler: {}", schedulerName);
         
-        // springTxDataSource ConnectionProvider 등록
+        // Register springTxDataSource ConnectionProvider
         DBConnectionManager.getInstance()
                 .addConnectionProvider("springTxDataSource." + schedulerName,
                         new ConnectionProvider() {
@@ -70,7 +72,7 @@ public class QuartzConnectionResetListener implements BeforeEachCallback {
                             }
                         });
         
-        // springNonTxDataSource ConnectionProvider 등록
+        // Register springNonTxDataSource ConnectionProvider
         DBConnectionManager.getInstance()
                 .addConnectionProvider("springNonTxDataSource." + schedulerName,
                         new ConnectionProvider() {

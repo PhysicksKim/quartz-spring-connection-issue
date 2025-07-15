@@ -22,10 +22,10 @@ public class TestJob implements Job {
         try {
             log.info("=== TestJob executing ===");
 
-            // 트랜잭션 내에서 데이터 저장
+            // Save data within transaction
             testService.saveData("job_data", "value_" + System.currentTimeMillis());
 
-            // 데이터 개수 확인
+            // Check data count
             long count = testService.countData();
             log.info("Current data count: {}", count);
 

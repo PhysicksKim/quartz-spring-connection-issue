@@ -12,7 +12,6 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
         format_sql: true
-    defer-datasource-initialization: true
 
   quartz:
     job-store-type: jdbc
@@ -32,9 +31,3 @@ spring:
           threadPool:
             class: org.quartz.simpl.SimpleThreadPool
             threadCount: 3
-
-logging:
-  level:
-    org.quartz: DEBUG
-    org.springframework.transaction: DEBUG
-    com.example: DEBUG

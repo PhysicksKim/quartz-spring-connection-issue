@@ -9,29 +9,31 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.utils.ConnectionProvider;
 import org.quartz.utils.DBConnectionManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Field;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
 @Transactional
 @ActiveProfiles("test")
 class QuartzConnectionClosedTest {
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(QuartzConnectionClosedTest.class);
+    private static final Logger log = LoggerFactory.getLogger(QuartzConnectionClosedTest.class);
 
-    // @MockBean을 사용하여 새로운 ApplicationContext 생성
+    // Use Mock to create new ApplicationContext for test
     @MockitoBean
-    private org.springframework.web.client.RestTemplate mockRestTemplate;
+    private RestTemplate mockRestTemplate;
 
     @Autowired
     private Scheduler scheduler;
@@ -69,7 +71,7 @@ class QuartzConnectionClosedTest {
             log.info("DBConnectionManager instance: {} (hashCode: {})",
                     connectionManager.getClass().getName(), connectionManager.hashCode());
 
-            // ConnectionProvider 목록 확인
+            // check ConnectionProviders
             Map<String, ConnectionProvider> providers =
                     (Map<String, org.quartz.utils.ConnectionProvider>)
                             getFieldValue(connectionManager, "providers");
@@ -83,7 +85,7 @@ class QuartzConnectionClosedTest {
                     log.info("  - Provider: {} -> {} (hashCode: {})",
                             name, provider.getClass().getName(), provider.hashCode());
 
-                    // LocalDataSourceJobStore의 DataSource 추출
+                    // extract DataSource of LocalDataSourceJobStore
                     if (provider.getClass().getName().contains("LocalDataSourceJobStore$")) {
                         try {
                             Field outerClassField = provider.getClass().getDeclaredField("this$0");
@@ -100,7 +102,7 @@ class QuartzConnectionClosedTest {
                                     providerDataSource != null ? providerDataSource.getClass().getName() : "NULL",
                                     providerDataSource != null ? providerDataSource.hashCode() : "NULL");
 
-                            // 현재 주입받은 DataSource와 비교
+                            // compare DataSource between provider and autowired DataSource
                             log.info("    - Provider DataSource == Autowired DataSource: {}",
                                     providerDataSource == dataSource);
 
@@ -111,7 +113,7 @@ class QuartzConnectionClosedTest {
                 }
             }
 
-            // 스케줄러 이름 확인
+            // Check scheduler name
             String schedulerName = scheduler.getSchedulerName();
             log.info("Current Scheduler Name: {}", schedulerName);
 
@@ -130,27 +132,27 @@ class QuartzConnectionClosedTest {
     void testConnectionClosedIssue() throws Exception {
         log.info("=== Connection Closed Issue Test ===");
 
-        // 첫 번째 ApplicationContext에서 Job 스케줄링
+        // Schedule job in first ApplicationContext
         testService.saveData("connectiontest", "value1");
         assertThat(testService.countData()).isEqualTo(1);
 
-        // Job 스케줄링
+        // Schedule job
         schedulerService.scheduleTestJob();
         log.info("Job scheduled successfully");
 
-        // 잠시 대기하여 Job이 실행되도록 함
+        // Wait for job to execute
         Thread.sleep(2000);
 
-        // 이제 Connection is closed 에러를 유발하기 위해
-        // 스케줄러를 강제로 중지하고 다시 시작
+        // Now to induce Connection is closed error
+        // Force stop and restart scheduler
         log.info("Stopping scheduler...");
         scheduler.standby();
         
         log.info("Starting scheduler...");
         scheduler.start();
 
-        // Connection is closed 에러가 발생할 수 있는 상황 생성
-        // 여러 번 Job을 스케줄링하여 Connection 충돌 유발
+        // Create situation where Connection is closed error can occur
+        // Schedule job multiple times to induce connection conflict
         for (int i = 0; i < 5; i++) {
             try {
                 log.info("Attempting to schedule job {} times", i + 1);
@@ -173,21 +175,21 @@ class QuartzConnectionClosedTest {
     void testMultipleSchedulerOperations() throws Exception {
         log.info("=== Multiple Scheduler Operations Test ===");
 
-        // 여러 번의 스케줄러 작업을 수행하여 Connection 충돌 유발
+        // Perform multiple scheduler operations to induce connection conflict
         for (int i = 0; i < 10; i++) {
             try {
                 log.info("Scheduler operation attempt {}", i + 1);
                 
-                // 데이터 저장
+                // Save data
                 testService.saveData("multitest" + i, "value" + i);
                 
-                // Job 스케줄링
+                // Schedule job
                 schedulerService.scheduleTestJob();
                 
-                // 잠시 대기
+                // Wait briefly
                 Thread.sleep(200);
                 
-                // 스케줄러 상태 확인
+                // Check scheduler status
                 boolean isStarted = scheduler.isStarted();
                 log.info("Scheduler is started: {}", isStarted);
                 

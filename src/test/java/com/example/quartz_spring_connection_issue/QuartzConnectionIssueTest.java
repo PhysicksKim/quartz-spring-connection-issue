@@ -9,6 +9,8 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.utils.ConnectionProvider;
 import org.quartz.utils.DBConnectionManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -26,7 +28,7 @@ import org.quartz.JobKey;
 @ActiveProfiles("test")
 class QuartzConnectionIssueTest {
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(QuartzConnectionIssueTest.class);
+    private static final Logger log = LoggerFactory.getLogger(QuartzConnectionIssueTest.class);
 
     @Autowired
     private Scheduler scheduler;
@@ -64,7 +66,7 @@ class QuartzConnectionIssueTest {
             log.info("DBConnectionManager instance: {} (hashCode: {})",
                     connectionManager.getClass().getName(), connectionManager.hashCode());
 
-            // ConnectionProvider 목록 확인
+            // Check ConnectionProvider list
             Map<String, ConnectionProvider> providers =
                     (Map<String, org.quartz.utils.ConnectionProvider>)
                             getFieldValue(connectionManager, "providers");
@@ -78,7 +80,7 @@ class QuartzConnectionIssueTest {
                     log.info("  - Provider: {} -> {} (hashCode: {})",
                             name, provider.getClass().getName(), provider.hashCode());
 
-                    // LocalDataSourceJobStore의 DataSource 추출
+                    // Extract DataSource from LocalDataSourceJobStore
                     if (provider.getClass().getName().contains("LocalDataSourceJobStore$")) {
                         try {
                             Field outerClassField = provider.getClass().getDeclaredField("this$0");
@@ -95,7 +97,7 @@ class QuartzConnectionIssueTest {
                                     providerDataSource != null ? providerDataSource.getClass().getName() : "NULL",
                                     providerDataSource != null ? providerDataSource.hashCode() : "NULL");
 
-                            // 현재 주입받은 DataSource와 비교
+                            // Compare with currently injected DataSource
                             log.info("    - Provider DataSource == Autowired DataSource: {}",
                                     providerDataSource == dataSource);
 
@@ -106,7 +108,7 @@ class QuartzConnectionIssueTest {
                 }
             }
 
-            // 스케줄러 이름 확인
+            // Check scheduler name
             String schedulerName = scheduler.getSchedulerName();
             log.info("Current Scheduler Name: {}", schedulerName);
 
@@ -125,16 +127,15 @@ class QuartzConnectionIssueTest {
     void test1_FirstTest() throws Exception {
         log.info("=== Test 1: First Test ===");
 
-        // 데이터 저장
+        // Save data
         testService.saveData("test1", "value1");
         assertThat(testService.countData()).isEqualTo(1);
 
-        // Job 스케줄링
+        // Schedule job
         JobKey jobKey = schedulerService.scheduleTestJob();
 
-        // Job이 실행될 때까지 대기
+        // Wait for job to execute
         Thread.sleep(1000);
-        // TestQuartzJobWaitUtil.waitForJobToExecute(scheduler, jobKey);
 
         log.info("=== Test 1: Completed ===");
     }
@@ -143,16 +144,15 @@ class QuartzConnectionIssueTest {
     void test2_SecondTest() throws Exception {
         log.info("=== Test 2: Second Test ===");
 
-        // 데이터 저장
+        // Save data
         testService.saveData("test2", "value2");
         assertThat(testService.countData()).isEqualTo(1);
 
-        // Job 스케줄링
+        // Schedule job
         JobKey jobKey = schedulerService.scheduleTestJob();
 
-        // Job이 실행될 때까지 대기
+        // Wait for job to execute
         Thread.sleep(1000);
-        // TestQuartzJobWaitUtil.waitForJobToExecute(scheduler, jobKey);
 
         log.info("=== Test 2: Completed ===");
     }
@@ -161,16 +161,15 @@ class QuartzConnectionIssueTest {
     void test3_ThirdTest() throws Exception {
         log.info("=== Test 3: Third Test ===");
 
-        // 데이터 저장
+        // Save data
         testService.saveData("test3", "value3");
         assertThat(testService.countData()).isEqualTo(1);
 
-        // Job 스케줄링
+        // Schedule job
         JobKey jobKey = schedulerService.scheduleTestJob();
 
-        // Job이 실행될 때까지 대기
+        // Wait for job to execute
         Thread.sleep(1000);
-        // TestQuartzJobWaitUtil.waitForJobToExecute(scheduler, jobKey);
 
         log.info("=== Test 3: Completed ===");
     }

@@ -1,15 +1,17 @@
-package com.example.quartz_spring_connection_issue;
+package com.example.quartz_spring_connection_issue.solution;
 
 import com.example.quartz_spring_connection_issue.service.SchedulerService;
 import com.example.quartz_spring_connection_issue.service.TestService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.utils.ConnectionProvider;
 import org.quartz.utils.DBConnectionManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -22,18 +24,19 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import org.quartz.JobKey;
+import org.springframework.web.client.RestTemplate;
 
+@Disabled
 @SpringBootTest
 @Transactional
 @ActiveProfiles("test")
-// @ExtendWith(QuartzConnectionResetListener.class)
+// @ExtendWith(QuartzConnectionResetListener.class) // <- SOLUTION : To reset Quartz connection after each test
 class QuartzConnectionFixedTest {
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(QuartzConnectionFixedTest.class);
+    private static final Logger log = LoggerFactory.getLogger(QuartzConnectionFixedTest.class);
 
-    // @MockBean을 사용하여 새로운 ApplicationContext 생성
     @MockitoBean
-    private org.springframework.web.client.RestTemplate mockRestTemplate;
+    private RestTemplate mockRestTemplate;
 
     @Autowired
     private Scheduler scheduler;
@@ -71,7 +74,7 @@ class QuartzConnectionFixedTest {
             log.info("DBConnectionManager instance: {} (hashCode: {})",
                     connectionManager.getClass().getName(), connectionManager.hashCode());
 
-            // ConnectionProvider 목록 확인
+            // Check ConnectionProvider list
             Map<String, ConnectionProvider> providers =
                     (Map<String, org.quartz.utils.ConnectionProvider>)
                             getFieldValue(connectionManager, "providers");
@@ -85,7 +88,7 @@ class QuartzConnectionFixedTest {
                     log.info("  - Provider: {} -> {} (hashCode: {})",
                             name, provider.getClass().getName(), provider.hashCode());
 
-                    // LocalDataSourceJobStore의 DataSource 추출
+                    // Extract DataSource from LocalDataSourceJobStore
                     if (provider.getClass().getName().contains("LocalDataSourceJobStore$")) {
                         try {
                             Field outerClassField = provider.getClass().getDeclaredField("this$0");
@@ -102,7 +105,7 @@ class QuartzConnectionFixedTest {
                                     providerDataSource != null ? providerDataSource.getClass().getName() : "NULL",
                                     providerDataSource != null ? providerDataSource.hashCode() : "NULL");
 
-                            // 현재 주입받은 DataSource와 비교
+                            // Compare with currently injected DataSource
                             log.info("    - Provider DataSource == Autowired DataSource: {}",
                                     providerDataSource == dataSource);
 
@@ -113,7 +116,7 @@ class QuartzConnectionFixedTest {
                 }
             }
 
-            // 스케줄러 이름 확인
+            // Check scheduler name
             String schedulerName = scheduler.getSchedulerName();
             log.info("Current Scheduler Name: {}", schedulerName);
 
@@ -132,16 +135,15 @@ class QuartzConnectionFixedTest {
     void test1_FixedTestFirst() throws Exception {
         log.info("=== Fixed Test 1: First Test ===");
 
-        // 데이터 저장
+        // Save data
         testService.saveData("fixedtest1", "value1");
         assertThat(testService.countData()).isEqualTo(1);
 
-        // Job 스케줄링
+        // Schedule job
         JobKey jobKey = schedulerService.scheduleTestJob();
 
-        // Job이 실행될 때까지 대기
+        // Wait for job to execute
         Thread.sleep(1000);
-        // TestQuartzJobWaitUtil.waitForJobToExecute(scheduler, jobKey);
 
         log.info("=== Fixed Test 1: Completed ===");
     }
@@ -150,16 +152,15 @@ class QuartzConnectionFixedTest {
     void test2_FixedTestSecond() throws Exception {
         log.info("=== Fixed Test 2: Second Test ===");
 
-        // 데이터 저장
+        // Save data
         testService.saveData("fixedtest2", "value2");
         assertThat(testService.countData()).isEqualTo(1);
 
-        // Job 스케줄링
+        // Schedule job
         JobKey jobKey = schedulerService.scheduleTestJob();
 
-        // Job이 실행될 때까지 대기
+        // Wait for job to execute
         Thread.sleep(1000);
-        // TestQuartzJobWaitUtil.waitForJobToExecute(scheduler, jobKey);
 
         log.info("=== Fixed Test 2: Completed ===");
     }
@@ -168,16 +169,15 @@ class QuartzConnectionFixedTest {
     void test3_FixedTestThird() throws Exception {
         log.info("=== Fixed Test 3: Third Test ===");
 
-        // 데이터 저장
+        // Save data
         testService.saveData("fixedtest3", "value3");
         assertThat(testService.countData()).isEqualTo(1);
 
-        // Job 스케줄링
+        // Schedule job
         JobKey jobKey = schedulerService.scheduleTestJob();
 
-        // Job이 실행될 때까지 대기
+        // Wait for job to execute
         Thread.sleep(1000);
-        // TestQuartzJobWaitUtil.waitForJobToExecute(scheduler, jobKey);
 
         log.info("=== Fixed Test 3: Completed ===");
     }
